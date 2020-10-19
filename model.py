@@ -84,28 +84,24 @@ class Encoder(nn.Module):
 
 
 class Attention(nn.Module):
-	def __init__(self, hidden_size):
+	def __init__(self, hidden_size,use_cuda = False):
 		super(Attention, self).__init__()
 		self.hidden_size = hidden_size
-		self.W1 = nn.Linear(hidden_size, hidden_size, bias=False)
+		self.W1 = nn.Conv1d(hidden_size, hidden_size, 1, 1)
 		self.W2 = nn.Linear(hidden_size, hidden_size, bias=False)
-		self.vt = nn.Linear(hidden_size, 1, bias=False)
-
+		self.V = nn.Parameter(torch.FloatTensor(hidden_size))
 	def forward(self, decoder_state, encoder_outputs, mask):
-		# (batch_size, max_seq_len, hidden_size)
+		encoder_outputs = encoder_outputs.permute(0,2,1) #(batch_size, hidden_size, max_seq_len)
 		encoder_transform = self.W1(encoder_outputs)
-
-		# (batch_size, 1 (unsqueezed), hidden_size)
-		decoder_transform = self.W2(decoder_state).unsqueeze(1)
-
+		decoder_transform = self.W2(decoder_state).unsqueeze(2) # (batch_size, hidden_size, 1 (unsqueezed))
+		decoder_transform = decoder_transform.repeat(1,1,encoder_outputs.size(2)) #(batch_size, hidden_size, max_seq_len)
 		# 1st line of Eq.(3) in the paper
 		# (batch_size, max_seq_len, 1) => (batch_size, max_seq_len)
-		u_i = self.vt(torch.tanh(encoder_transform + decoder_transform)).squeeze(-1)
-
+		V = self.V.unsqueeze(0).unsqueeze(0).repeat(encoder_outputs.size(0), 1, 1)
+		u_i = torch.bmm(V, torch.tanh(encoder_transform + decoder_transform)).squeeze(1)
 		# softmax with only valid inputs, excluding zero padded parts
 		# log-softmax for a better numerical stability
 		log_score = masked_log_softmax(u_i, mask, dim=-1)
-
 		return log_score
 
 
