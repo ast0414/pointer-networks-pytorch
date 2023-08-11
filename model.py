@@ -163,7 +163,14 @@ class PointerNet(nn.Module):
 
 		# Lets use zeros as an intial input for sorting example
 		decoder_input = encoder_outputs.new_zeros(torch.Size((batch_size, self.hidden_size)))
-		decoder_hidden = (encoder_h_n[-1, 0, :, :].squeeze(), encoder_c_n[-1, 0, :, :].squeeze())
+		if self.bidirectional:
+			# Optionally sum-merge encoder outputs
+			decoder_hidden = (
+							encoder_h_n[-1, 0, :, :].squeeze()+encoder_h_n[-1, 1, :, :].squeeze(), 
+							encoder_c_n[-1, 0, :, :].squeeze()+encoder_c_n[-1, 1, :, :].squeeze()
+							)
+        else:
+            decoder_hidden = (encoder_h_n[-1, 0, :, :].squeeze(), encoder_c_n[-1, 0, :, :].squeeze())
 
 		range_tensor = torch.arange(max_seq_len, device=input_lengths.device, dtype=input_lengths.dtype).expand(batch_size, max_seq_len, max_seq_len)
 		each_len_tensor = input_lengths.view(-1, 1, 1).expand(batch_size, max_seq_len, max_seq_len)
