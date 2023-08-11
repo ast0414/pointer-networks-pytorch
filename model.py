@@ -58,7 +58,7 @@ def masked_max(vector: torch.Tensor,
 	-------
 	A ``torch.Tensor`` of including the maximum values.
 	"""
-	one_minus_mask = (1.0 - mask).byte()
+	one_minus_mask = (1.0 - mask).bool()
 	replaced_vector = vector.masked_fill(one_minus_mask, min_val)
 	max_value, max_index = replaced_vector.max(dim=dim, keepdim=keepdim)
 	return max_value, max_index
